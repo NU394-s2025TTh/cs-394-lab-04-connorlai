@@ -1,19 +1,45 @@
 // REFERENCE SOLUTION - Do not distribute to students
 // src/components/NoteItem.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
+import { deleteNote } from '../services/noteService';
 import { Note } from '../types/Note';
 
 interface NoteItemProps {
   note: Note;
   onEdit?: (note: Note) => void;
 }
+
+enum DeletionStatus {
+  NONE = 'none',
+  CONFIRM_MODAL = 'confirm-modal',
+  DELETING = 'deleting',
+}
+
 // TODO: delete eslint-disable-next-line when you implement the onEdit handler
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit }) => {
   // TODO: manage state for deleting status and error message
+  const [status, setStatus] = useState<DeletionStatus>(DeletionStatus.NONE);
+  const [error, setError] = useState<Error | null>(null);
   // TODO: create a function to handle the delete action, which will display a confirmation (window.confirm) and call the deleteNote function from noteService,
   // and update the deleting status and error message accordingly
+
+  const onHandleDeleteAction = async () => {
+    setStatus(DeletionStatus.CONFIRM_MODAL);
+    if (window.confirm('Do you want to delete this note?')) {
+      try {
+        setStatus(DeletionStatus.DELETING);
+        await deleteNote(note.id);
+      } catch (e) {
+        setError(e as Error);
+        setStatus(DeletionStatus.NONE);
+      }
+    } else {
+      setStatus(DeletionStatus.NONE);
+    }
+  };
+
+  useEffect(() => console.log(error?.message), [error]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -69,9 +95,24 @@ const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit }) => {
     <div className="note-item">
       <div className="note-header">
         <h3>{note.title}</h3>
+        {error && <p>Failed to delete note.</p>}
         <div className="note-actions">
-          <button className="edit-button">Edit</button>
-          <button className="delete-button">{'Delete'}</button>
+          {onEdit && (
+            <button
+              disabled={status !== DeletionStatus.NONE}
+              className="edit-button"
+              onClick={() => onEdit(note)}
+            >
+              Edit
+            </button>
+          )}
+          <button
+            disabled={status === DeletionStatus.DELETING}
+            className="delete-button"
+            onClick={onHandleDeleteAction}
+          >
+            {status == DeletionStatus.DELETING ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </div>
       <div className="note-content">{note.content}</div>
